@@ -36,9 +36,6 @@ const server = http.createServer(app);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // CRITICAL: Parse Twilio form data
 
-// Serve frontend static files
-app.use(express.static('../frontend/dist'));
-
 // CORS headers for development
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
