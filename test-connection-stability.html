@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connection Stability Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.connected { background-color: #d4edda; color: #155724; }
+        .status.disconnected { background-color: #f8d7da; color: #721c24; }
+        .status.connecting { background-color: #fff3cd; color: #856404; }
+        .status.error { background-color: #f8d7da; color: #721c24; }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        .metric {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .metric-label {
+            font-size: 12px;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔌 WebSocket Connection Stability Test</h1>
+        <p>This tool tests the WebSocket connection stability and error handling improvements.</p>
+        
+        <!-- Connection Status -->
+        <div class="test-section">
+            <h3>Connection Status</h3>
+            <div id="connectionStatus" class="status disconnected">Disconnected</div>
+            <div class="metrics">
+                <div class="metric">
+                    <div id="connectionAttempts" class="metric-value">0</div>
+                    <div class="metric-label">Connection Attempts</div>
+                </div>
+                <div class="metric">
+                    <div id="successfulConnections" class="metric-value">0</div>
+                    <div class="metric-label">Successful Connections</div>
+                </div>
+                <div class="metric">
+                    <div id="connectionErrors" class="metric-value">0</div>
+                    <div class="metric-label">Connection Errors</div>
+                </div>
+                <div class="metric">
+                    <div id="uptime" class="metric-value">0s</div>
+                    <div class="metric-label">Current Session Uptime</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Connection Controls -->
+        <div class="test-section">
+            <h3>Connection Controls</h3>
+            <button id="connectBtn" onclick="testConnection()">Connect to WebSocket</button>
+            <button id="disconnectBtn" onclick="disconnectWebSocket()" disabled>Disconnect</button>
+            <button id="testPipelineBtn" onclick="testPipeline()" disabled>Test Vapi Pipeline</button>
+            <button id="stressTestBtn" onclick="runStressTest()">Run Stress Test</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+
+        <!-- Error Simulation -->
+        <div class="test-section">
+            <h3>Error Simulation Tests</h3>
+            <button onclick="simulateError('transcriber_error')">Simulate Transcriber Error</button>
+            <button onclick="simulateError('llm_error')">Simulate LLM Error</button>
+            <button onclick="simulateError('tts_error')">Simulate TTS Error</button>
+            <button onclick="simulateError('pipeline_error')">Simulate Pipeline Error</button>
+        </div>
+
+        <!-- Connection Log -->
+        <div class="test-section">
+            <h3>Connection Log</h3>
+            <div id="connectionLog" class="log">Ready to test connection...\n</div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let connectionAttempts = 0;
+        let successfulConnections = 0;
+        let connectionErrors = 0;
+        let connectionStartTime = null;
+        let uptimeInterval = null;
+
+        // Update UI elements
+        function updateStatus(status, className) {
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.textContent = status;
+            statusEl.className = `status ${className}`;
+        }
+
+        function updateMetrics() {
+            document.getElementById('connectionAttempts').textContent = connectionAttempts;
+            document.getElementById('successfulConnections').textContent = successfulConnections;
+            document.getElementById('connectionErrors').textContent = connectionErrors;
+        }
+
+        function updateUptime() {
+            if (connectionStartTime) {
+                const uptime = Math.floor((Date.now() - connectionStartTime) / 1000);
+                document.getElementById('uptime').textContent = uptime + 's';
+            }
+        }
+
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEl = document.getElementById('connectionLog');
+            logEl.textContent += `[${timestamp}] ${message}\n`;
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(`[Connection Test] ${message}`);
+        }
+
+        function clearLog() {
+            document.getElementById('connectionLog').textContent = '';
+        }
+
+        // Test WebSocket connection
+        function testConnection() {
+            connectionAttempts++;
+            updateMetrics();
+            
+            log('🔌 Attempting to connect to WebSocket...');
+            updateStatus('Connecting...', 'connecting');
+            
+            // Clean up existing connection
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+
+            try {
+                // IMPORTANT: Using correct port 5000 (not 5001)
+                ws = new WebSocket('ws://localhost:5000');
+                
+                ws.onopen = function(event) {
+                    successfulConnections++;
+                    connectionStartTime = Date.now();
+                    updateMetrics();
+                    
+                    log('✅ WebSocket connected successfully!');
+                    log(`   Connection ID: ${event.target.url}`);
+                    updateStatus('Connected', 'connected');
+                    
+                    // Enable/disable buttons
+                    document.getElementById('connectBtn').disabled = true;
+                    document.getElementById('disconnectBtn').disabled = false;
+                    document.getElementById('testPipelineBtn').disabled = false;
+                    
+                    // Start uptime counter
+                    uptimeInterval = setInterval(updateUptime, 1000);
+                    
+                    // Send connection test message
+                    ws.send(JSON.stringify({
+                        type: 'connection_test',
+                        timestamp: new Date().toISOString(),
+                        message: 'Testing connection stability'
+                    }));
+                };
+
+                ws.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        log(`📨 Received: ${data.type} - ${data.message || 'No message'}`);
+                        
+                        // Handle specific message types
+                        switch(data.type) {
+                            case 'connection_established':
+                                log(`🎯 Connection established with ID: ${data.connectionId}`);
+                                break;
+                            case 'pipeline_activated':
+                                log(`🚀 Pipeline activated: ${data.config?.model || 'Unknown model'}`);
+                                break;
+                            case 'error':
+                            case 'pipeline_error':
+                                log(`❌ Error received: ${data.error}`);
+                                break;
+                            default:
+                                log(`📋 Message type: ${data.type}`);
+                        }
+                    } catch (error) {
+                        log(`⚠️ Failed to parse message: ${error.message}`);
+                    }
+                };
+
+                ws.onerror = function(error) {
+                    connectionErrors++;
+                    updateMetrics();
+                    
+                    log(`❌ WebSocket error: ${error.message || 'Unknown error'}`);
+                    updateStatus('Connection Error', 'error');
+                };
+
+                ws.onclose = function(event) {
+                    log(`🔌 WebSocket closed: Code ${event.code}, Reason: ${event.reason || 'No reason'}`);
+                    
+                    if (event.code !== 1000) {
+                        log(`⚠️ Unexpected close: ${event.code} - ${event.reason}`);
+                        updateStatus('Disconnected (Unexpected)', 'error');
+                    } else {
+                        updateStatus('Disconnected', 'disconnected');
+                    }
+                    
+                    // Reset UI
+                    document.getElementById('connectBtn').disabled = false;
+                    document.getElementById('disconnectBtn').disabled = true;
+                    document.getElementById('testPipelineBtn').disabled = true;
+                    
+                    // Stop uptime counter
+                    if (uptimeInterval) {
+                        clearInterval(uptimeInterval);
+                        uptimeInterval = null;
+                    }
+                    connectionStartTime = null;
+                    document.getElementById('uptime').textContent = '0s';
+                };
+
+            } catch (error) {
+                connectionErrors++;
+                updateMetrics();
+                
+                log(`❌ Failed to create WebSocket: ${error.message}`);
+                updateStatus('Connection Failed', 'error');
+            }
+        }
+
+        // Disconnect WebSocket
+        function disconnectWebSocket() {
+            if (ws) {
+                log('🔌 Manually disconnecting WebSocket...');
+                ws.close(1000, 'Manual disconnect');
+                ws = null;
+            }
+        }
+
+        // Test Vapi-style pipeline
+        function testPipeline() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('❌ Cannot test pipeline - WebSocket not connected');
+                return;
+            }
+
+            log('🎯 Testing Vapi-style pipeline activation...');
+            
+            const testConfig = {
+                type: 'start_vapi_pipeline',
+                config: {
+                    model: 'llama-3.1-8b-instant',
+                    transcriber: 'whisper-large-v3-turbo',
+                    voiceProvider: 'cartesia',
+                    voiceModel: 'sonic-2024-10',
+                    voiceId: 'a0e99841-438c-4a64-b679-ae501e7d6091',
+                    systemPrompt: 'You are a helpful test assistant.',
+                    firstMessage: 'Hello! This is a connection stability test.',
+                    firstMessageMode: 'assistant-speaks-first',
+                    clearHistory: true
+                }
+            };
+
+            ws.send(JSON.stringify(testConfig));
+            log('📤 Sent pipeline activation request');
+        }
+
+        // Simulate various errors
+        function simulateError(errorType) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('❌ Cannot simulate error - WebSocket not connected');
+                return;
+            }
+
+            log(`🧪 Simulating ${errorType}...`);
+            
+            ws.send(JSON.stringify({
+                type: 'simulate_error',
+                errorType: errorType,
+                timestamp: new Date().toISOString()
+            }));
+        }
+
+        // Run stress test
+        function runStressTest() {
+            log('🏋️ Starting stress test...');
+            
+            let testCount = 0;
+            const maxTests = 10;
+            
+            const stressInterval = setInterval(() => {
+                if (testCount >= maxTests) {
+                    clearInterval(stressInterval);
+                    log('✅ Stress test completed');
+                    return;
+                }
+                
+                testCount++;
+                log(`🔄 Stress test ${testCount}/${maxTests}`);
+                
+                // Disconnect and reconnect
+                if (ws) {
+                    ws.close();
+                }
+                
+                setTimeout(() => {
+                    testConnection();
+                }, 1000);
+                
+            }, 3000);
+        }
+
+        // Initialize
+        updateMetrics();
+        log('🚀 Connection stability test ready');
+        log('💡 Click "Connect to WebSocket" to start testing');
+    </script>
+</body>
+</html>

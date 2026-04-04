@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test TTS Providers</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .test-section {
+            background: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .result {
+            background: #333;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .warning { color: #ff9800; }
+    </style>
+</head>
+<body>
+    <h1>🧪 TTS Providers Test</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Fetch Providers from API</h2>
+        <button onclick="testProvidersAPI()">Run Test</button>
+        <div id="test1-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Simulate Dropdown Rendering</h2>
+        <button onclick="testDropdownRendering()">Run Test</button>
+        <div id="test2-result" class="result"></div>
+        <select id="provider-dropdown" style="width: 100%; padding: 10px; margin-top: 10px; font-size: 16px;">
+            <option value="">Loading...</option>
+        </select>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 3: Test Fallback Behavior</h2>
+        <button onclick="testFallback()">Run Test</button>
+        <div id="test3-result" class="result"></div>
+    </div>
+
+    <script>
+        async function testProvidersAPI() {
+            const resultDiv = document.getElementById('test1-result');
+            resultDiv.innerHTML = '⏳ Testing /api/tts/providers endpoint...';
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/tts/providers');
+                const contentType = response.headers.get('content-type');
+                
+                resultDiv.innerHTML = `
+                    <div class="success">✅ Response received</div>
+                    <div>Status: ${response.status}</div>
+                    <div>Content-Type: ${contentType}</div>
+                `;
+                
+                if (!contentType || !contentType.includes('application/json')) {
+                    resultDiv.innerHTML += `<div class="error">❌ Response is not JSON (likely HTML)</div>`;
+                    const text = await response.text();
+                    resultDiv.innerHTML += `<div>Response preview: ${text.substring(0, 100)}...</div>`;
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                if (data.providers) {
+                    resultDiv.innerHTML += `<div class="success">✅ Providers found: ${data.providers.length}</div>`;
+                    data.providers.forEach(p => {
+                        resultDiv.innerHTML += `<div>  - ${p.name} (${p.id}): ${p.available ? '✅ Available' : '❌ Not Available'}</div>`;
+                    });
+                } else {
+                    resultDiv.innerHTML += `<div class="error">❌ No providers in response</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function testDropdownRendering() {
+            const resultDiv = document.getElementById('test2-result');
+            const dropdown = document.getElementById('provider-dropdown');
+            
+            resultDiv.innerHTML = '⏳ Simulating dropdown rendering...';
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/tts/providers');
+                const data = await response.json();
+                
+                // Clear dropdown
+                dropdown.innerHTML = '';
+                
+                if (data.providers && data.providers.length > 0) {
+                    // Render from API
+                    data.providers.forEach(provider => {
+                        const option = document.createElement('option');
+                        option.value = provider.id;
+                        option.textContent = provider.name + (provider.available ? '' : ' (Not Available)');
+                        option.disabled = !provider.available;
+                        dropdown.appendChild(option);
+                    });
+                    resultDiv.innerHTML = `<div class="success">✅ Dropdown populated from API (${data.providers.length} providers)</div>`;
+                } else {
+                    // Fallback
+                    dropdown.innerHTML = `
+                        <option value="cartesia">Cartesia</option>
+                        <option value="elevenlabs">ElevenLabs</option>
+                    `;
+                    resultDiv.innerHTML = `<div class="warning">⚠️ Using fallback options (API returned empty)</div>`;
+                }
+            } catch (error) {
+                // Fallback on error
+                dropdown.innerHTML = `
+                    <option value="cartesia">Cartesia</option>
+                    <option value="elevenlabs">ElevenLabs</option>
+                `;
+                resultDiv.innerHTML = `<div class="warning">⚠️ Using fallback options (API error: ${error.message})</div>`;
+            }
+        }
+
+        function testFallback() {
+            const resultDiv = document.getElementById('test3-result');
+            
+            // Simulate the fallback logic
+            const fallbackProviders = [
+                { id: 'cartesia', name: 'Cartesia', available: true },
+                { id: 'elevenlabs', name: 'ElevenLabs', available: true }
+            ];
+            
+            resultDiv.innerHTML = `
+                <div class="success">✅ Fallback providers configured:</div>
+                ${fallbackProviders.map(p => `<div>  - ${p.name} (${p.id}): ${p.available ? '✅ Available' : '❌ Not Available'}</div>`).join('')}
+                <div style="margin-top: 10px;">This ensures the dropdown always has options, even if the API fails.</div>
+            `;
+        }
+
+        // Auto-run tests on load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                testProvidersAPI();
+                testDropdownRendering();
+                testFallback();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

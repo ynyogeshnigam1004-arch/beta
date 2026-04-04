@@ -1,0 +1,34 @@
+========================================
+  CREATE DESKTOP SHORTCUT (OPTIONAL)
+========================================
+
+To create a desktop shortcut for easy access:
+
+1. Right-click on "START-VOICE-AI.bat"
+2. Select "Send to" → "Desktop (create shortcut)"
+3. Rename shortcut to "Voice AI Platform"
+4. (Optional) Right-click shortcut → Properties → Change Icon
+
+Now you can start the Voice AI Platform by:
+- Double-clicking the desktop shortcut
+
+========================================
+
+ALTERNATIVE: Pin to Taskbar
+
+1. Right-click "START-VOICE-AI.bat"
+2. Select "Pin to taskbar"
+3. Click the taskbar icon to start
+
+========================================
+
+WHAT HAPPENS WHEN YOU START:
+
+✓ Backend starts on port 5000
+✓ Frontend starts on port 3000
+✓ Browser opens automatically
+✓ All 20+ LLM models loaded
+✓ All 100+ voices loaded
+✓ Ready to use!
+
+========================================

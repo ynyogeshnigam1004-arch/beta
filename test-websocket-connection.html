@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .test-section {
+            background: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #333;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .warning { color: #ff9800; }
+        .info { color: #2196F3; }
+    </style>
+</head>
+<body>
+    <h1>🧪 WebSocket Connection Test</h1>
+    
+    <div class="test-section">
+        <h2>Connection Test</h2>
+        <button id="connectBtn" onclick="testConnection()">Connect to WebSocket</button>
+        <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+        <button id="testPipelineBtn" onclick="testVapiPipeline()" disabled>Test Vapi Pipeline</button>
+        <div id="connectionStatus">Status: Not connected</div>
+    </div>
+
+    <div class="test-section">
+        <h2>Event Log</h2>
+        <button onclick="clearLog()">Clear Log</button>
+        <div id="eventLog" class="log">Ready to test...</div>
+    </div>
+
+    <script>
+        let ws = null;
+        let connectionId = null;
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('eventLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type;
+            logDiv.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('eventLog').innerHTML = 'Log cleared...';
+        }
+
+        function updateStatus(status, type = 'info') {
+            const statusDiv = document.getElementById('connectionStatus');
+            statusDiv.innerHTML = `Status: ${status}`;
+            statusDiv.className = type;
+        }
+
+        function testConnection() {
+            try {
+                log('🔌 Attempting to connect to ws://localhost:5000', 'info');
+                updateStatus('Connecting...', 'warning');
+                
+                ws = new WebSocket('ws://localhost:5000');
+                
+                ws.onopen = () => {
+                    log('✅ WebSocket connected successfully', 'success');
+                    updateStatus('Connected', 'success');
+                    
+                    document.getElementById('connectBtn').disabled = true;
+                    document.getElementById('disconnectBtn').disabled = false;
+                    document.getElementById('testPipelineBtn').disabled = false;
+                };
+                
+                ws.onmessage = (event) => {
+                    try {
+                        const message = JSON.parse(event.data);
+                        log(`📨 Received: ${message.type} - ${JSON.stringify(message).substring(0, 100)}...`, 'info');
+                        
+                        if (message.type === 'connection_established') {
+                            connectionId = message.connectionId;
+                            log(`🆔 Connection ID: ${connectionId}`, 'success');
+                        }
+                    } catch (error) {
+                        log(`📨 Received binary data: ${event.data.length} bytes`, 'info');
+                    }
+                };
+                
+                ws.onerror = (error) => {
+                    log(`❌ WebSocket error: ${error}`, 'error');
+                    updateStatus('Error', 'error');
+                };
+                
+                ws.onclose = (event) => {
+                    log(`🔌 WebSocket closed: Code ${event.code}, Reason: ${event.reason || 'None'}`, 'warning');
+                    updateStatus('Disconnected', 'error');
+                    
+                    document.getElementById('connectBtn').disabled = false;
+                    document.getElementById('disconnectBtn').disabled = true;
+                    document.getElementById('testPipelineBtn').disabled = true;
+                };
+                
+            } catch (error) {
+                log(`❌ Connection error: ${error.message}`, 'error');
+                updateStatus('Failed', 'error');
+            }
+        }
+
+        function disconnect() {
+            if (ws) {
+                log('🔌 Disconnecting WebSocket', 'warning');
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function testVapiPipeline() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('❌ WebSocket not connected', 'error');
+                return;
+            }
+            
+            try {
+                log('🎯 Testing Vapi-Style Pipeline activation', 'info');
+                
+                const config = {
+                    model: 'llama-3.1-8b-instant',
+                    transcriber: 'whisper-large-v3-turbo',
+                    voiceProvider: 'cartesia',
+                    voiceModel: 'sonic-english',
+                    voiceId: 'a0e99841-438c-4a64-b679-ae501e7d6091',
+                    systemPrompt: 'You are a helpful test assistant. Keep responses very short.',
+                    firstMessage: 'Hello! This is a test message.',
+                    firstMessageMode: 'assistant-speaks-first'
+                };
+                
+                ws.send(JSON.stringify({
+                    type: 'start_vapi_pipeline',
+                    config: config
+                }));
+                
+                log('📤 Sent pipeline activation request', 'success');
+                
+            } catch (error) {
+                log(`❌ Pipeline test error: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-connect on page load
+        window.addEventListener('load', () => {
+            setTimeout(testConnection, 1000);
+        });
+    </script>
+</body>
+</html>

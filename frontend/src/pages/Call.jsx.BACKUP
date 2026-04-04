@@ -1,0 +1,578 @@
+/**
+ * ⚠️ IMPORTANT: DO NOT AUTO-FORMAT OR MODIFY THIS FILE ⚠️
+ * This file contains critical WebSocket reconnection logic
+ * Backup: Call.jsx.BACKUP
+ * Last working version: 2025-01-29
+ */
+
+import { useState, useEffect, useRef } from 'react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { FiPhone, FiPhoneOff, FiMic, FiMicOff, FiArrowLeft, FiActivity } from 'react-icons/fi'
+import { getCachedData } from '../utils/cacheUtils'
+import './Call.css'
+
+function Call() {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const [assistant, setAssistant] = useState(null)
+  const [isConnected, setIsConnected] = useState(false)
+  const [isMuted, setIsMuted] = useState(false)
+  const [transcript, setTranscript] = useState('')
+  const [partialTranscript, setPartialTranscript] = useState('')
+  const [aiResponse, setAiResponse] = useState('')
+  const [llmStatus, setLlmStatus] = useState('idle') // idle, processing, completed, error
+  const [status, setStatus] = useState('Idle')
+  const [callDuration, setCallDuration] = useState(0)
+  
+  const wsRef = useRef(null)
+  const mediaRecorderRef = useRef(null)
+  const audioContextRef = useRef(null)
+  const callStartTimeRef = useRef(null)
+  const durationIntervalRef = useRef(null)
+
+  // Load assistant
+  useEffect(() => {
+    const cachedAssistants = getCachedData('cached_assistants')
+    if (cachedAssistants && cachedAssistants.length > 0) {
+      if (id && id !== 'new') {
+        const foundAssistant = cachedAssistants.find(a => a.id === id)
+        if (foundAssistant) {
+          setAssistant(foundAssistant)
+          console.log('✅ Loaded assistant for call:', foundAssistant.name)
+        }
+      } else {
+        setAssistant(cachedAssistants[0])
+        console.log('✅ Loaded first assistant:', cachedAssistants[0].name)
+      }
+    } else {
+      console.error('❌ No assistants found in cache')
+    }
+  }, [id])
+
+  // Start call
+  const handleStartCall = async () => {
+    if (!assistant) {
+      alert('Please select an assistant first')
+      return
+    }
+
+    try {
+      // IMPORTANT: Clean up existing connection before starting new one
+      if (wsRef.current) {
+        console.log('🧹 Cleaning up existing connection...')
+        if (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING) {
+          wsRef.current.close()
+        }
+        wsRef.current = null
+      }
+      
+      // Stop existing microphone
+      stopMicrophone()
+      
+      // Reset all state
+      setTranscript('')
+      setPartialTranscript('')
+      setAiResponse('')
+      setLlmStatus('idle')
+      setCallDuration(0)
+      if (durationIntervalRef.current) {
+        clearInterval(durationIntervalRef.current)
+      }
+      
+      setStatus('Connecting...')
+      
+      // Initialize NEW WebSocket
+      const ws = new WebSocket('ws://localhost:5000')
+      wsRef.current = ws
+
+      ws.onopen = async () => {
+        console.log('🔌 WebSocket connected')
+        setStatus('Connected')
+        setIsConnected(true)
+
+        // Activate Main Pipeline with configuration
+        ws.send(JSON.stringify({
+          type: 'start_main_pipeline',
+          config: {
+            model: assistant.model || 'llama-3.1-8b-instant',
+            transcriber: assistant.transcriber || 'whisper-large-v3-turbo',
+            voiceModel: assistant.voiceModel || 'sonic-2024-10',
+            voiceId: assistant.voiceId || 'a0e99841-438c-4a64-b679-ae501e7d6091',
+            systemPrompt: assistant.systemPrompt || 'You are a helpful assistant.',
+            firstMessage: assistant.firstMessage || 'Hello! How can I help you today?',
+            firstMessageMode: assistant.firstMessageMode || 'assistant-speaks-first',
+            clearHistory: true  // Clear conversation history on new call
+          }
+        }))
+
+        // Start microphone
+        await startMicrophone()
+        
+        // Start call timer
+        callStartTimeRef.current = Date.now()
+        durationIntervalRef.current = setInterval(() => {
+          setCallDuration(Math.floor((Date.now() - callStartTimeRef.current) / 1000))
+        }, 1000)
+      }
+
+      ws.onmessage = async (event) => {
+        try {
+          // Check if it's binary audio data
+          if (event.data instanceof Blob) {
+            const arrayBuffer = await event.data.arrayBuffer()
+            playAudio(arrayBuffer)
+            return
+          }
+
+          // Parse JSON messages
+          const message = JSON.parse(event.data)
+          console.log('📨 Received:', message.type)
+
+          switch (message.type) {
+            case 'connection_established':
+              console.log('✅ Connection established:', message.connectionId)
+              break
+
+            case 'pipeline_activated':
+              console.log('✅ Main Pipeline activated')
+              setStatus('Ready')
+              break
+
+            case 'transcriber_started':
+              setStatus('Listening...')
+              break
+
+            case 'transcriber_completed':
+              setTranscript(message.text)
+              setPartialTranscript('')
+              setStatus('Processing...')
+              break
+
+            case 'llm_started':
+              setStatus('Thinking...')
+              setLlmStatus('processing')
+              break
+
+            case 'llm_chunk':
+              setAiResponse(prev => prev + message.text)
+              setStatus('Speaking...')
+              setLlmStatus('processing')
+              break
+
+            case 'llm_completed':
+              setAiResponse(message.text)
+              setStatus('Speaking...')
+              setLlmStatus('completed')
+              break
+
+            case 'tts_started':
+              setStatus('Speaking...')
+              break
+
+            case 'tts_completed':
+              setStatus('Ready')
+              break
+
+            case 'workflow_completed':
+              console.log('✅ Workflow completed')
+              setStatus('Ready')
+              break
+
+            case 'config_confirmed':
+              console.log('✅ Configuration confirmed')
+              setStatus('Ready')
+              break
+
+            case 'stt_completed':
+              setTranscript(message.text)
+              setPartialTranscript('')
+              setStatus('Thinking...')
+              break
+
+            case 'processing_completed':
+              console.log('✅ Processing completed')
+              setStatus('Ready')
+              break
+
+            case 'error':
+            case 'pipeline_error':
+            case 'transcriber_error':
+            case 'llm_error':
+            case 'tts_error':
+              console.error('❌ Error:', message.error)
+              // Extract readable error message
+              let errorMsg = message.error
+              if (typeof errorMsg === 'object') {
+                errorMsg = errorMsg.message || JSON.stringify(errorMsg).substring(0, 200)
+              }
+              // Clean up circular structure errors
+              if (errorMsg.includes('circular structure')) {
+                errorMsg = 'API request failed. Please check backend logs for details.'
+              }
+              setStatus('Error: ' + errorMsg)
+              
+              // Track LLM-specific errors
+              if (message.type === 'llm_error') {
+                setLlmStatus('error')
+              }
+              break
+
+            case 'no_speech_detected':
+              console.log('🔇 No speech detected')
+              setStatus('Ready')
+              break
+          }
+        } catch (error) {
+          console.error('❌ Error processing message:', error)
+        }
+      }
+
+      ws.onerror = (error) => {
+        console.error('❌ WebSocket error:', error)
+        setStatus('Connection error')
+      }
+
+      ws.onclose = () => {
+        console.log('🔌 WebSocket closed')
+        setIsConnected(false)
+        setStatus('Disconnected - Ready for new call')
+        stopMicrophone()
+        if (durationIntervalRef.current) {
+          clearInterval(durationIntervalRef.current)
+        }
+        // IMPORTANT: Clear WebSocket reference so new connection can be made
+        if (wsRef.current === ws) {
+          wsRef.current = null
+        }
+      }
+
+    } catch (error) {
+      console.error('❌ Error starting call:', error)
+      setStatus('Failed to connect')
+      alert('Failed to start call: ' + error.message)
+    }
+  }
+
+  // Stop call
+  const handleStopCall = () => {
+    // Stop main pipeline first
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'stop_main_pipeline'
+      }))
+    }
+    
+    // Close WebSocket
+    if (wsRef.current) {
+      wsRef.current.close()
+      wsRef.current = null
+    }
+    
+    stopMicrophone()
+    setIsConnected(false)
+    setStatus('Call ended')
+    setTranscript('')
+    setPartialTranscript('')
+    setAiResponse('')
+    setLlmStatus('idle')
+    setCallDuration(0)
+    if (durationIntervalRef.current) {
+      clearInterval(durationIntervalRef.current)
+    }
+  }
+
+  // Start microphone
+  const startMicrophone = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 16000
+        }
+      })
+      
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus'
+      })
+      mediaRecorderRef.current = mediaRecorder
+
+      let audioChunks = []
+      let isRecording = false
+      let recordingTimer = null
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0 && !isMuted) {
+          audioChunks.push(event.data)
+          // Store chunks on the recorder for manual sending
+          if (!mediaRecorder.audioChunks) {
+            mediaRecorder.audioChunks = []
+          }
+          mediaRecorder.audioChunks.push(event.data)
+        }
+      }
+
+      // Stop and send audio every 3 seconds OR when user stops speaking
+      const sendAudioPeriodically = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+          mediaRecorderRef.current.stop()
+          
+          setTimeout(() => {
+            if (audioChunks.length > 0 && wsRef.current?.readyState === WebSocket.OPEN) {
+              const audioBlob = new Blob(audioChunks, { type: 'audio/webm' })
+              // Only send if audio is substantial (> 5KB) to ensure quality
+              if (audioBlob.size > 5000) { 
+                wsRef.current.send(audioBlob)
+                console.log('🎤 Sent audio chunk:', audioBlob.size, 'bytes')
+              } else {
+                console.log('⚠️ Audio chunk too small, skipping:', audioBlob.size, 'bytes')
+              }
+              audioChunks = []
+            }
+            
+            // Restart recording
+            if (mediaRecorderRef.current) {
+              mediaRecorderRef.current.start()
+            }
+          }, 100)
+        }
+      }
+
+      mediaRecorder.start()
+      console.log('🎤 Microphone started')
+      
+      // Send audio every 3 seconds
+      recordingTimer = setInterval(sendAudioPeriodically, 3000)
+      mediaRecorderRef.current.recordingTimer = recordingTimer
+
+    } catch (error) {
+      console.error('❌ Error accessing microphone:', error)
+      alert('Could not access microphone: ' + error.message)
+    }
+  }
+
+  // Manual send audio function
+  const sendCurrentAudio = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop()
+      
+      setTimeout(() => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.audioChunks) {
+          const audioBlob = new Blob(mediaRecorderRef.current.audioChunks, { type: 'audio/webm' })
+          if (audioBlob.size > 1000 && wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(audioBlob)
+            console.log('🎤 Manually sent audio:', audioBlob.size, 'bytes')
+          }
+          mediaRecorderRef.current.audioChunks = []
+        }
+        
+        // Restart recording
+        if (mediaRecorderRef.current) {
+          mediaRecorderRef.current.start()
+        }
+      }, 100)
+    }
+  }
+
+  // Stop microphone
+  const stopMicrophone = () => {
+    if (mediaRecorderRef.current) {
+      // Clear recording timer
+      if (mediaRecorderRef.current.recordingTimer) {
+        clearInterval(mediaRecorderRef.current.recordingTimer)
+      }
+      mediaRecorderRef.current.stop()
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop())
+      mediaRecorderRef.current = null
+    }
+  }
+
+  // Toggle mute
+  const toggleMute = () => {
+    setIsMuted(!isMuted)
+  }
+
+  // Play audio
+  const playAudio = async (arrayBuffer) => {
+    try {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)()
+      }
+
+      const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer)
+      const source = audioContextRef.current.createBufferSource()
+      source.buffer = audioBuffer
+      source.connect(audioContextRef.current.destination)
+      source.start(0)
+    } catch (error) {
+      console.error('❌ Error playing audio:', error)
+    }
+  }
+
+  // Format duration
+  const formatDuration = (seconds) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  if (!assistant) {
+    return (
+      <div className="call-page">
+        <div className="call-container">
+          <div className="no-assistant">
+            <FiPhone size={64} />
+            <h2>No Assistant Available</h2>
+            <p>Create an assistant first to make a call.</p>
+            <Link to="/assistants" className="btn-primary">
+              Go to Assistants
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="call-page">
+      <div className="call-header">
+        <button onClick={() => navigate('/assistants')} className="btn-back">
+          <FiArrowLeft /> Back to Assistants
+        </button>
+      </div>
+
+      <div className="call-container">
+        <div className="call-card">
+          <div className="assistant-info">
+            <div className="assistant-avatar">
+              {assistant.name.charAt(0).toUpperCase()}
+            </div>
+            <h2>{assistant.name}</h2>
+            <p className="assistant-model">{assistant.model}</p>
+          </div>
+
+          <div className="call-status">
+            <div className={`status-indicator ${isConnected ? 'active' : ''}`}>
+              <FiActivity />
+            </div>
+            <span className="status-text">{status}</span>
+            {isConnected && (
+              <span className="call-duration">{formatDuration(callDuration)}</span>
+            )}
+          </div>
+
+          <div className="call-controls">
+            {!isConnected ? (
+              <button onClick={handleStartCall} className="btn-call-start">
+                <FiPhone size={24} />
+                <span>Start Call</span>
+              </button>
+            ) : (
+              <>
+                <button 
+                  onClick={toggleMute} 
+                  className={`btn-control ${isMuted ? 'muted' : ''}`}
+                >
+                  {isMuted ? <FiMicOff size={24} /> : <FiMic size={24} />}
+                </button>
+                <button 
+                  onClick={sendCurrentAudio} 
+                  className="btn-control"
+                  style={{backgroundColor: '#10b981', color: 'white'}}
+                >
+                  <FiActivity size={24} />
+                </button>
+                <button onClick={handleStopCall} className="btn-call-end">
+                  <FiPhoneOff size={24} />
+                  <span>End Call</span>
+                </button>
+              </>
+            )}
+          </div>
+
+          {isConnected && (
+            <div className="call-transcript">
+              <div className="transcript-section">
+                <h4>YOU</h4>
+                <p className="transcript-text">
+                  {transcript || partialTranscript || 'Listening...'}
+                </p>
+              </div>
+              
+              {/* Enhanced LLM Response Section */}
+              <div className="transcript-section" style={{
+                backgroundColor: llmStatus === 'completed' ? '#f0fdf4' : 
+                                 llmStatus === 'processing' ? '#fef3c7' : 
+                                 llmStatus === 'error' ? '#fef2f2' : '#f8f9fa',
+                borderColor: llmStatus === 'completed' ? '#22c55e' : 
+                            llmStatus === 'processing' ? '#f59e0b' : 
+                            llmStatus === 'error' ? '#ef4444' : '#e5e7eb',
+                borderWidth: '2px',
+                borderStyle: 'solid'
+              }}>
+                <h4 style={{
+                  color: llmStatus === 'completed' ? '#16a34a' : 
+                         llmStatus === 'processing' ? '#d97706' : 
+                         llmStatus === 'error' ? '#dc2626' : '#6b7280'
+                }}>
+                  🤖 LLM MODEL RESPONSE
+                  {llmStatus === 'processing' && ' (Processing...)'}
+                  {llmStatus === 'completed' && ' (✅ Working!)'}
+                  {llmStatus === 'error' && ' (❌ Error)'}
+                </h4>
+                <div style={{marginBottom: '8px', fontSize: '12px', color: '#6b7280'}}>
+                  Model: {assistant.model} | Status: {status} | LLM Status: {llmStatus}
+                </div>
+                <p className="transcript-text ai-response" style={{
+                  color: aiResponse ? '#1e40af' : '#9ca3af',
+                  fontWeight: aiResponse ? '500' : 'normal',
+                  minHeight: '40px',
+                  padding: '8px',
+                  backgroundColor: 'white',
+                  borderRadius: '4px',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  {aiResponse || (llmStatus === 'processing' ? 'Processing your request...' : 'Waiting for LLM response...')}
+                </p>
+                {aiResponse && (
+                  <div style={{fontSize: '11px', color: '#6b7280', marginTop: '4px'}}>
+                    ✅ LLM is working! Response length: {aiResponse.length} characters
+                  </div>
+                )}
+                {llmStatus === 'error' && (
+                  <div style={{fontSize: '11px', color: '#dc2626', marginTop: '4px'}}>
+                    ❌ LLM encountered an error. Check error details below.
+                  </div>
+                )}
+              </div>
+
+              {/* Error Details */}
+              {status.includes('Error') && (
+                <div className="transcript-section" style={{backgroundColor: '#fee', borderColor: '#f88'}}>
+                  <h4>⚠️ ERROR DETAILS</h4>
+                  <p className="transcript-text" style={{color: '#c00', fontSize: '14px', whiteSpace: 'pre-wrap'}}>
+                    {status}
+                  </p>
+                </div>
+              )}
+
+              {/* Debug Information */}
+              <div className="transcript-section" style={{backgroundColor: '#f9fafb', borderColor: '#d1d5db'}}>
+                <h4 style={{fontSize: '14px', color: '#374151'}}>🔍 DEBUG INFO</h4>
+                <div style={{fontSize: '12px', color: '#6b7280', lineHeight: '1.4'}}>
+                  <div>• Connection: {isConnected ? '✅ Connected' : '❌ Disconnected'}</div>
+                  <div>• WebSocket: {wsRef.current?.readyState === WebSocket.OPEN ? '✅ Open' : '❌ Closed'}</div>
+                  <div>• Microphone: {mediaRecorderRef.current ? '✅ Active' : '❌ Inactive'}</div>
+                  <div>• Muted: {isMuted ? '🔇 Yes' : '🔊 No'}</div>
+                  <div>• Call Duration: {formatDuration(callDuration)}</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default Call

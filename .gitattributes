@@ -1,0 +1,8 @@
+# Protect critical API configuration files from auto-formatting
+backend/services/apiDataManager.js -text
+backend/services/apiDataManager.BACKUP.js -text
+backend/.env -text
+
+# These files should not be auto-formatted or modified
+backend/services/apiDataManager.js linguist-generated=false
+backend/services/README-API-CONFIGURATION.md linguist-documentation

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Call Workflow</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .test-section {
+            background: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .result {
+            background: #333;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .warning { color: #ff9800; }
+        .info { color: #2196F3; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Call Workflow Test</h1>
+    
+    <div class="test-section">
+        <h2>WebSocket Connection Test</h2>
+        <button onclick="testWebSocketConnection()">Test WebSocket</button>
+        <div id="ws-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Call Pipeline Test</h2>
+        <button onclick="testCallPipeline()" id="pipeline-btn">Test Call Pipeline</button>
+        <div id="pipeline-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Audio Test</h2>
+        <button onclick="testAudioCapture()" id="audio-btn">Test Audio Capture</button>
+        <div id="audio-result" class="result"></div>
+    </div>
+
+    <script>
+        let ws = null;
+
+        function testWebSocketConnection() {
+            const resultDiv = document.getElementById('ws-result');
+            resultDiv.innerHTML = '⏳ Testing WebSocket connection to ws://localhost:5001...';
+            
+            try {
+                ws = new WebSocket('ws://localhost:5001');
+                
+                ws.onopen = () => {
+                    resultDiv.innerHTML = '<span class="success">✅ WebSocket connected successfully!</span>';
+                    
+                    // Test sending a message
+                    ws.send(JSON.stringify({
+                        type: 'test',
+                        message: 'Hello from test client'
+                    }));
+                };
+                
+                ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    resultDiv.innerHTML += `\n<span class="info">📨 Received: ${JSON.stringify(data, null, 2)}</span>`;
+                };
+                
+                ws.onerror = (error) => {
+                    resultDiv.innerHTML = `<span class="error">❌ WebSocket error: ${error}</span>`;
+                };
+                
+                ws.onclose = (event) => {
+                    resultDiv.innerHTML += `\n<span class="warning">🔌 WebSocket closed: Code ${event.code}, Reason: ${event.reason || 'None'}</span>`;
+                };
+                
+                // Timeout test
+                setTimeout(() => {
+                    if (ws.readyState === WebSocket.CONNECTING) {
+                        resultDiv.innerHTML = '<span class="error">❌ WebSocket connection timeout</span>';
+                        ws.close();
+                    }
+                }, 5000);
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ WebSocket test failed: ${error.message}</span>`;
+            }
+        }
+
+        function testCallPipeline() {
+            const resultDiv = document.getElementById('pipeline-result');
+            const btn = document.getElementById('pipeline-btn');
+            
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                resultDiv.innerHTML = '<span class="error">❌ WebSocket not connected. Run WebSocket test first.</span>';
+                return;
+            }
+            
+            btn.disabled = true;
+            resultDiv.innerHTML = '⏳ Testing call pipeline activation...';
+            
+            // Send pipeline activation message
+            const config = {
+                type: 'start_main_pipeline',
+                config: {
+                    model: 'llama-3.1-8b-instant',
+                    transcriber: 'whisper-large-v3-turbo',
+                    voiceProvider: 'cartesia',
+                    voiceModel: 'sonic-2024-10',
+                    voiceId: 'a0e99841-438c-4a64-b679-ae501e7d6091',
+                    systemPrompt: 'You are a helpful assistant.',
+                    firstMessage: 'Hello! This is a test.',
+                    firstMessageMode: 'assistant-speaks-first',
+                    clearHistory: true
+                }
+            };
+            
+            ws.send(JSON.stringify(config));
+            resultDiv.innerHTML += '\n<span class="info">📤 Sent pipeline activation message</span>';
+            
+            // Listen for pipeline responses
+            const originalOnMessage = ws.onmessage;
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'main_pipeline_activated') {
+                    resultDiv.innerHTML += '\n<span class="success">✅ Main pipeline activated!</span>';
+                } else if (data.type === 'processing_started') {
+                    resultDiv.innerHTML += '\n<span class="info">🔄 Processing started</span>';
+                } else if (data.type === 'tts_completed') {
+                    resultDiv.innerHTML += '\n<span class="success">🔊 TTS completed</span>';
+                } else if (data.type === 'error') {
+                    resultDiv.innerHTML += `\n<span class="error">❌ Pipeline error: ${data.error}</span>`;
+                } else {
+                    resultDiv.innerHTML += `\n<span class="info">📨 ${data.type}: ${JSON.stringify(data, null, 2)}</span>`;
+                }
+                
+                // Call original handler if it exists
+                if (originalOnMessage) {
+                    originalOnMessage(event);
+                }
+            };
+            
+            setTimeout(() => {
+                btn.disabled = false;
+            }, 3000);
+        }
+
+        function testAudioCapture() {
+            const resultDiv = document.getElementById('audio-result');
+            const btn = document.getElementById('audio-btn');
+            
+            btn.disabled = true;
+            resultDiv.innerHTML = '⏳ Testing audio capture...';
+            
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    resultDiv.innerHTML = '<span class="success">✅ Audio capture permission granted</span>';
+                    
+                    const mediaRecorder = new MediaRecorder(stream);
+                    const audioChunks = [];
+                    
+                    mediaRecorder.ondataavailable = (event) => {
+                        audioChunks.push(event.data);
+                        resultDiv.innerHTML += `\n<span class="info">🎤 Audio chunk: ${event.data.size} bytes</span>`;
+                    };
+                    
+                    mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        resultDiv.innerHTML += `\n<span class="success">🎵 Audio recording complete: ${audioBlob.size} bytes</span>`;
+                        
+                        // Stop all tracks
+                        stream.getTracks().forEach(track => track.stop());
+                        btn.disabled = false;
+                    };
+                    
+                    // Record for 2 seconds
+                    mediaRecorder.start();
+                    resultDiv.innerHTML += '\n<span class="info">🔴 Recording for 2 seconds...</span>';
+                    
+                    setTimeout(() => {
+                        mediaRecorder.stop();
+                    }, 2000);
+                })
+                .catch(error => {
+                    resultDiv.innerHTML = `<span class="error">❌ Audio capture failed: ${error.message}</span>`;
+                    btn.disabled = false;
+                });
+        }
+
+        // Auto-run WebSocket test on load
+        window.addEventListener('load', () => {
+            setTimeout(testWebSocketConnection, 1000);
+        });
+    </script>
+</body>
+</html>

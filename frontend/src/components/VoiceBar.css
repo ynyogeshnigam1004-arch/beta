@@ -1,0 +1,403 @@
+/* Call Transcript Component Styles */
+/* Professional call transcript interface matching the reference design */
+
+.call-transcript-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: overlayFadeIn 0.3s ease-out;
+}
+
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.call-transcript-container {
+  background: #1a1a1a;
+  border-radius: 16px;
+  border: 1px solid #2a2a2a;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7),
+              0 0 40px rgba(84, 245, 196, 0.05);
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  animation: containerSlideUp 0.4s ease-out;
+  position: relative;
+}
+
+@keyframes containerSlideUp {
+  from {
+    transform: translateY(30px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Header */
+.call-transcript-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #2a2a2a;
+  background: #1f1f1f;
+  border-radius: 16px 16px 0 0;
+}
+
+.call-transcript-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #f8f8e7;
+  margin: 0;
+}
+
+.call-close-btn {
+  background: transparent;
+  border: none;
+  color: #999;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: color 0.2s ease;
+  line-height: 1;
+}
+
+.call-close-btn:hover {
+  color: #ff3b30;
+}
+
+/* Messages Container */
+.call-messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  background: #141414;
+  min-height: 400px;
+  max-height: 500px;
+}
+
+/* Empty State */
+.call-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: 16px;
+  opacity: 0.3;
+}
+
+.empty-text {
+  font-size: 1.1rem;
+  color: #bdbdbd;
+  margin: 0 0 8px 0;
+}
+
+.empty-subtext {
+  font-size: 0.9rem;
+  color: #666;
+  margin: 0;
+}
+
+/* Call Message */
+.call-message {
+  margin-bottom: 20px;
+  animation: messageSlideIn 0.3s ease-out;
+}
+
+@keyframes messageSlideIn {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.call-message.partial {
+  opacity: 0.7;
+}
+
+.message-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.message-sender {
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.user-message .message-sender {
+  color: #54f5c4;
+}
+
+.assistant-message .message-sender {
+  color: #007AFF;
+}
+
+.message-time {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.message-text {
+  background: #1f1f1f;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #e0e0e0;
+  border-left: 3px solid transparent;
+}
+
+.user-message .message-text {
+  border-left-color: #54f5c4;
+  background: rgba(84, 245, 196, 0.05);
+}
+
+.assistant-message .message-text {
+  border-left-color: #007AFF;
+  background: rgba(0, 122, 255, 0.05);
+}
+
+/* Footer */
+.call-transcript-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #2a2a2a;
+  background: #1f1f1f;
+  border-radius: 0 0 16px 16px;
+}
+
+.call-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.call-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid;
+  flex: 1;
+}
+
+.call-status-badge.pulse .status-indicator-dot {
+  animation: dotPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.7;
+  }
+}
+
+.status-indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.call-latency-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(84, 245, 196, 0.1);
+  border-radius: 20px;
+  border: 1px solid rgba(84, 245, 196, 0.3);
+}
+
+.latency-icon {
+  font-size: 1rem;
+}
+
+.latency-text {
+  font-size: 0.85rem;
+  color: #54f5c4;
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+}
+
+/* Call Actions */
+.call-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.call-action-btn {
+  flex: 1;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.view-logs-btn {
+  background: transparent;
+  border: 1px solid #2a2a2a;
+  color: #bdbdbd;
+}
+
+.view-logs-btn:hover {
+  background: #2a2a2a;
+  color: #f8f8e7;
+}
+
+.end-call-btn {
+  background: linear-gradient(135deg, #ff3b30 0%, #d12a20 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(255, 59, 48, 0.3);
+}
+
+.end-call-btn:hover {
+  background: linear-gradient(135deg, #ff4f45 0%, #e63935 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(255, 59, 48, 0.4);
+}
+
+.end-call-icon {
+  font-size: 1.1rem;
+}
+
+/* Call Duration Badge */
+.call-duration-badge {
+  position: absolute;
+  top: 20px;
+  right: 80px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  border: 1px solid rgba(84, 245, 196, 0.2);
+}
+
+.duration-icon {
+  font-size: 0.9rem;
+}
+
+.duration-text {
+  font-size: 0.85rem;
+  color: #54f5c4;
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+}
+
+/* Scrollbar Styling */
+.call-messages-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.call-messages-container::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+.call-messages-container::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+  border-radius: 3px;
+}
+
+.call-messages-container::-webkit-scrollbar-thumb:hover {
+  background: #3a3a3a;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .call-transcript-container {
+    width: 95%;
+    max-height: 85vh;
+  }
+
+  .call-transcript-header,
+  .call-transcript-footer,
+  .call-messages-container {
+    padding: 16px 20px;
+  }
+
+  .call-transcript-title {
+    font-size: 1.1rem;
+  }
+
+  .call-actions {
+    flex-direction: column;
+  }
+
+  .call-action-btn {
+    width: 100%;
+  }
+
+  .call-duration-badge {
+    top: 16px;
+    right: 60px;
+    padding: 4px 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .call-transcript-container {
+    width: 98%;
+    max-height: 90vh;
+  }
+
+  .call-status-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .call-latency-badge {
+    justify-content: center;
+  }
+}
