@@ -38,24 +38,23 @@ function PhoneNumbers() {
   const fetchPhoneNumbers = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('/api/phone-numbers', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const response = await axios.get(config.getApiUrl('/api/phone-numbers'), {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       })
 
-      if (response.status === 401) {
-        handle401Error()
-        return
-      }
-
-      const data = await response.json()
+      const data = response.data
       if (data.success) {
         setPhoneNumbers(data.phoneNumbers || [])
       } else {
         setError(data.error)
       }
     } catch (error) {
-      console.error('Error fetching phone numbers:', error)
-      setError('Failed to load phone numbers')
+      if (error.response?.status === 401) {
+        handle401Error()
+      } else {
+        console.error('Error fetching phone numbers:', error)
+        setError('Failed to load phone numbers')
+      }
     } finally {
       setLoading(false)
     }
@@ -63,21 +62,18 @@ function PhoneNumbers() {
 
   const fetchAssistants = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('/api/assistants', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const response = await axios.get(config.getApiUrl('/api/assistants'), {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       })
 
-      if (response.status === 401) {
-        handle401Error()
-        return
-      }
-
-      const data = await response.json()
+      const data = response.data
       if (data.success) {
         setAssistants(data.assistants || [])
       }
     } catch (error) {
+      if (error.response?.status === 401) {
+        handle401Error()
+      }
       console.error('Error fetching assistants:', error)
     }
   }
@@ -90,22 +86,11 @@ function PhoneNumbers() {
 
     setTestingCredentials(true)
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('/api/phone-numbers/test-credentials', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(credentials)
+      const response = await axios.post(config.getApiUrl('/api/phone-numbers/test-credentials'), credentials, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       })
 
-      if (response.status === 401) {
-        handle401Error()
-        return
-      }
-
-      const data = await response.json()
+      const data = response.data
       if (data.success) {
         alert('✅ Credentials are valid!')
         setStep(2)
@@ -114,7 +99,11 @@ function PhoneNumbers() {
         alert(`❌ ${data.error}`)
       }
     } catch (error) {
-      alert(`❌ Error testing credentials: ${error.message}`)
+      if (error.response?.status === 401) {
+        handle401Error()
+      } else {
+        alert(`❌ Error testing credentials: ${error.message}`)
+      }
     } finally {
       setTestingCredentials(false)
     }
@@ -123,29 +112,22 @@ function PhoneNumbers() {
   const fetchAvailableNumbers = async () => {
     setFetchingNumbers(true)
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('/api/phone-numbers/fetch-numbers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(credentials)
+      const response = await axios.post(config.getApiUrl('/api/phone-numbers/fetch-numbers'), credentials, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       })
 
-      if (response.status === 401) {
-        handle401Error()
-        return
-      }
-
-      const data = await response.json()
+      const data = response.data
       if (data.success) {
         setAvailableNumbers(data.phoneNumbers || [])
       } else {
         alert(`❌ ${data.error}`)
       }
     } catch (error) {
-      alert(`❌ Error fetching numbers: ${error.message}`)
+      if (error.response?.status === 401) {
+        handle401Error()
+      } else {
+        alert(`❌ Error fetching numbers: ${error.message}`)
+      }
     } finally {
       setFetchingNumbers(false)
     }
@@ -162,96 +144,67 @@ function PhoneNumbers() {
       const token = localStorage.getItem('token')
       
       // First save credentials
-      const credResponse = await fetch('/api/phone-numbers/save-credentials', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(credentials)
+      const credResponse = await axios.post(config.getApiUrl('/api/phone-numbers/save-credentials'), credentials, {
+        headers: { 'Authorization': `Bearer ${token}` }
       })
 
-      if (credResponse.status === 401) {
-        handle401Error()
-        return
-      }
-
-      const credData = await credResponse.json()
-      if (!credData.success) {
-        throw new Error(credData.error)
+      if (!credResponse.data.success) {
+        throw new Error(credResponse.data.error)
       }
 
       // Then add phone number
-      const numberResponse = await fetch('/api/phone-numbers/add', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          phoneNumber: selectedNumber,
-          label: numberConfig.label,
-          assignedAssistantId: numberConfig.assistantId
-        })
+      const numberResponse = await axios.post(config.getApiUrl('/api/phone-numbers/add'), {
+        phoneNumber: selectedNumber,
+        label: numberConfig.label,
+        assignedAssistantId: numberConfig.assistantId
+      }, {
+        headers: { 'Authorization': `Bearer ${token}` }
       })
 
-      if (numberResponse.status === 401) {
-        handle401Error()
-        return
-      }
-
-      const numberData = await numberResponse.json()
-      if (numberData.success) {
+      if (numberResponse.data.success) {
         alert('✅ Phone number added successfully!')
         setShowAddModal(false)
         resetAddFlow()
         fetchPhoneNumbers()
       } else {
-        throw new Error(numberData.error)
+        throw new Error(numberResponse.data.error)
       }
     } catch (error) {
-      alert(`❌ Error: ${error.message}`)
+      if (error.response?.status === 401) {
+        handle401Error()
+      } else {
+        alert(`❌ Error: ${error.message}`)
+      }
     } finally {
       setSavingNumber(false)
     }
   }
 
   const updateAssistantAssignment = async (phoneNumberId, assistantId) => {
-    // Add to updating set
     setUpdatingAssignments(prev => new Set([...prev, phoneNumberId]))
     
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`/api/phone-numbers/${phoneNumberId}/assistant`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ assignedAssistantId: assistantId })
+      const response = await axios.put(config.getApiUrl(`/api/phone-numbers/${phoneNumberId}/assistant`), { assignedAssistantId: assistantId }, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       })
 
-      if (response.status === 401) {
-        handle401Error()
-        return
-      }
-
-      const data = await response.json()
-      if (data.success) {
-        // Show success feedback
+      if (response.data.success) {
         const phoneCard = document.querySelector(`[data-phone-id="${phoneNumberId}"]`)
         if (phoneCard) {
           phoneCard.classList.add('update-success')
           setTimeout(() => phoneCard.classList.remove('update-success'), 2000)
         }
-        fetchPhoneNumbers() // Refresh the list
+        fetchPhoneNumbers()
       } else {
-        alert(`❌ ${data.error}`)
+        alert(`❌ ${response.data.error}`)
       }
     } catch (error) {
-      alert(`❌ Error updating assignment: ${error.message}`)
+      if (error.response?.status === 401) {
+        handle401Error()
+      } else {
+        alert(`❌ Error updating assignment: ${error.message}`)
+      }
     } finally {
-      // Remove from updating set
       setUpdatingAssignments(prev => {
         const newSet = new Set(prev)
         newSet.delete(phoneNumberId)
@@ -266,25 +219,21 @@ function PhoneNumbers() {
     }
 
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`/api/phone-numbers/${phoneNumberId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
+      const response = await axios.delete(config.getApiUrl(`/api/phone-numbers/${phoneNumberId}`), {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       })
 
-      if (response.status === 401) {
-        handle401Error()
-        return
-      }
-
-      const data = await response.json()
-      if (data.success) {
+      if (response.data.success) {
         fetchPhoneNumbers()
       } else {
-        alert(`❌ ${data.error}`)
+        alert(`❌ ${response.data.error}`)
       }
     } catch (error) {
-      alert(`❌ Error deleting phone number: ${error.message}`)
+      if (error.response?.status === 401) {
+        handle401Error()
+      } else {
+        alert(`❌ Error deleting phone number: ${error.message}`)
+      }
     }
   }
 

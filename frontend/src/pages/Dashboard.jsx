@@ -40,7 +40,7 @@ function Dashboard() {
       })
       
       // Fetch assistants to get active count
-      const assistantsResponse = await fetch('/api/assistants', {
+      const assistantsResponse = await fetch(config.getApiUrl('/api/assistants'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

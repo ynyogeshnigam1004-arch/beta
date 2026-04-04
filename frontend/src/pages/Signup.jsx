@@ -35,7 +35,7 @@ function Signup({ onLogin }) {
     setLoading(true)
 
     try {
-      const response = await axios.post('/api/auth/signup', {
+      const response = await axios.post(config.getApiUrl('/api/auth/signup'), {
         fullName: name,
         email,
         password
@@ -68,7 +68,7 @@ function Signup({ onLogin }) {
     setLoading(true)
 
     try {
-      const response = await axios.post('/api/auth/verify-email', {
+      const response = await axios.post(config.getApiUrl('/api/auth/verify-email'), {
         email,
         code: verificationCode
       })

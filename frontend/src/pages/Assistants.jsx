@@ -70,8 +70,8 @@ function Assistants() {
     try {
       setIsLoadingModels(true)
       console.log('🔄 Fetching LLM models from API...')
-      const response = await fetch('/api/models')
-      const data = await response.json()
+      const response = await fetch(config.getApiUrl('/api/models'));
+      const data = await response.json();
       console.log('📊 LLM Models API response:', data)
       
       if (data.success) {
@@ -192,8 +192,8 @@ function Assistants() {
   const fetchPricing = async () => {
     try {
       console.log('🔄 Fetching pricing from API...')
-      const response = await fetch('/api/pricing')
-      const data = await response.json()
+      const response = await fetch(config.getApiUrl('/api/pricing'));
+      const data = await response.json();
       console.log('💰 Pricing API response:', data)
       
       if (data.success) {

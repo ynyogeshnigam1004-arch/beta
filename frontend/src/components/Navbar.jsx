@@ -32,12 +32,12 @@ function Navbar({ isAuthenticated, onLogout, onToggleSidebar }) {
   const fetchCredits = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('/api/credits', {
+      const response = await fetch(config.getApiUrl('/api/credits/balance'), {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
-      })
-      const data = await response.json()
+      });
+      const data = await response.json();
       
       if (data.success) {
         setCredits(data.credits)

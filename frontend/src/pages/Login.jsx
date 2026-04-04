@@ -27,7 +27,7 @@ function Login({ onLogin }) {
         requestData.twoFactorCode = twoFactorCode
       }
 
-      const response = await axios.post('/api/auth/login', requestData)
+      const response = await axios.post(config.getApiUrl('/api/auth/login'), requestData)
 
       if (response.data.success) {
         const { token, user } = response.data
@@ -61,7 +61,7 @@ function Login({ onLogin }) {
   const handleGoogleLogin = async () => {
     try {
       setLoading(true)
-      const response = await axios.get('/api/auth/google')
+      const response = await axios.get(config.getApiUrl('/api/auth/google'))
       
       if (response.data.success) {
         // Open Google OAuth in popup

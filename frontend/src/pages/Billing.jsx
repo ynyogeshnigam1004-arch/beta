@@ -22,16 +22,15 @@ const Billing = () => {
 
   const fetchCredits = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/credits', {
+      const response = await axios.get(config.getApiUrl('/api/credits/balance'), {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
-      const data = await response.json();
+      const data = response.data;
       
       if (data.success) {
-        setCredits(data.credits);
+        setCredits(data.balance);
         // Don't override selected currency from user's choice
         if (!selectedCurrency) {
           setCurrency(data.currency);
@@ -49,12 +48,12 @@ const Billing = () => {
   const fetchTransactions = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/credits/history', {
+      const response = await axios.get(config.getApiUrl('/api/credits/history'), {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-      const data = await response.json();
+      const data = response.data;
       
       if (data.success) {
         setTransactions(data.transactions);
