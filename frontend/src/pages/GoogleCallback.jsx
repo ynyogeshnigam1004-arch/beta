@@ -39,7 +39,7 @@ function GoogleCallback() {
             window.close()
           } else {
             // Handle direct navigation (not popup)
-            const response = await fetch('/api/auth/google/callback', {
+            const response = await fetch(config.getApiUrl('/api/auth/google/callback'), {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

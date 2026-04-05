@@ -79,7 +79,7 @@ function Login({ onLogin }) {
             popup.close()
             
             try {
-              const callbackResponse = await axios.post('/api/auth/google/callback', {
+              const callbackResponse = await axios.post(config.getApiUrl('/api/auth/google/callback'), {
                 code: event.data.code,
                 state: event.data.state
               })
