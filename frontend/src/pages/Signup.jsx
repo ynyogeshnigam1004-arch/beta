@@ -94,7 +94,7 @@ function Signup({ onLogin }) {
     setLoading(true)
 
     try {
-      const response = await axios.post('/api/auth/resend-verification', {
+      const response = await axios.post(config.getApiUrl('/api/auth/resend-verification'), {
         email
       })
 
@@ -113,7 +113,7 @@ function Signup({ onLogin }) {
   const handleGoogleSignup = async () => {
     try {
       setLoading(true)
-      const response = await axios.get('/api/auth/google')
+      const response = await axios.get(config.getApiUrl('/api/auth/google'))
       
       if (response.data.success) {
         // Open Google OAuth in popup
@@ -131,7 +131,7 @@ function Signup({ onLogin }) {
             popup.close()
             
             try {
-              const callbackResponse = await axios.post('/api/auth/google/callback', {
+              const callbackResponse = await axios.post(config.getApiUrl('/api/auth/google/callback'), {
                 code: event.data.code,
                 state: event.data.state
               })
