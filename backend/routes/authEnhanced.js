@@ -331,17 +331,24 @@ router.post('/login', authLimiter, [
  * Initiate Google OAuth
  */
 router.get('/google', (req, res) => {
-  const state = authService.generateSessionToken();
-  const googleAuthURL = authService.generateGoogleOAuthURL(state);
-  
-  // Store state in session or temporary storage
-  req.session = req.session || {};
-  req.session.oauthState = state;
-  
-  res.json({
-    success: true,
-    authUrl: googleAuthURL
-  });
+  try {
+    const state = Math.random().toString(36).substring(2, 15); // Simple short state
+    const googleAuthURL = authService.generateGoogleOAuthURL(state);
+    
+    console.log('🔑 Google OAuth initiated');
+    console.log('🔗 Auth URL:', googleAuthURL);
+    
+    res.json({
+      success: true,
+      authUrl: googleAuthURL
+    });
+  } catch (error) {
+    console.error('❌ Google OAuth initiation error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to initiate Google OAuth'
+    });
+  }
 });
 
 /**

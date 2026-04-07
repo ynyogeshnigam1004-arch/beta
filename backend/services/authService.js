@@ -153,17 +153,19 @@ class AuthService {
    */
   generateGoogleOAuthURL(state) {
     const baseURL = 'https://accounts.google.com/o/oauth2/v2/auth';
+    
+    // Simplified parameters to avoid URL length issues
     const params = new URLSearchParams({
       client_id: process.env.GOOGLE_CLIENT_ID,
       redirect_uri: process.env.GOOGLE_REDIRECT_URI,
       response_type: 'code',
-      scope: 'openid email profile',
-      state: state,
-      access_type: 'offline',
-      prompt: 'consent'
+      scope: 'email profile',
+      state: state || 'default'
     });
     
-    return `${baseURL}?${params.toString()}`;
+    const url = `${baseURL}?${params.toString()}`;
+    console.log('🔗 Generated OAuth URL:', url);
+    return url;
   }
 
   /**
