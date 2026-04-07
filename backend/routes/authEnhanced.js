@@ -345,8 +345,88 @@ router.get('/google', (req, res) => {
 });
 
 /**
+ * GET /api/auth/google/callback
+ * Handle Google OAuth callback (GET request from Google)
+ */
+router.get('/google/callback', async (req, res) => {
+  try {
+    const { code, state, error } = req.query;
+
+    if (error) {
+      console.error('Google OAuth error:', error);
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=oauth_failed`);
+    }
+
+    if (!code) {
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=no_code`);
+    }
+
+    // Exchange code for user info
+    const googleUser = await authService.exchangeGoogleCode(code);
+
+    // Find or create user
+    let user = await User.findOne({ 
+      $or: [
+        { email: googleUser.email },
+        { googleId: googleUser.id }
+      ]
+    });
+
+    if (user) {
+      // Update existing user with Google info
+      if (!user.googleId) {
+        user.googleId = googleUser.id;
+        user.profilePicture = googleUser.picture;
+        user.emailVerified = googleUser.verified_email;
+        await user.save();
+      }
+    } else {
+      // Create new user
+      const isAdmin = googleUser.email.toLowerCase() === 'ynyogeshnigam1008@gmail.com';
+      
+      user = new User({
+        fullName: googleUser.name,
+        email: googleUser.email,
+        googleId: googleUser.id,
+        profilePicture: googleUser.picture,
+        emailVerified: googleUser.verified_email,
+        role: isAdmin ? 'admin' : 'user',
+        credits: isAdmin ? 999999999 : 500
+      });
+      await user.save();
+    }
+
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    // Redirect to frontend with token
+    const redirectUrl = `${process.env.FRONTEND_URL}/auth/google/callback?token=${token}&user=${encodeURIComponent(JSON.stringify({
+      id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+      profilePicture: user.profilePicture
+    }))}`;
+
+    res.redirect(redirectUrl);
+
+  } catch (error) {
+    console.error('Google OAuth callback error:', error);
+    res.redirect(`${process.env.FRONTEND_URL}/login?error=oauth_failed`);
+  }
+});
+
+/**
  * POST /api/auth/google/callback
- * Handle Google OAuth callback
+ * Handle Google OAuth callback (POST request from frontend)
  */
 router.post('/google/callback', [
   body('code').notEmpty().withMessage('Authorization code is required'),
