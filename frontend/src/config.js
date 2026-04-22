@@ -1,6 +1,7 @@
 /**
  * Global Configuration for the Frontend
  * Handles different environments (Development vs Production)
+ * Updated for API fixes
  */
 
 // Use environment variables from Vite (.env files)
