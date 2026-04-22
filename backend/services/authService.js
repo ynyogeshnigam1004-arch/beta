@@ -177,36 +177,43 @@ class AuthService {
    */
   async exchangeGoogleCode(code) {
     try {
+      const axios = require('axios');
+      
       // Exchange code for access token
-      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
+      const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', 
+        new URLSearchParams({
           client_id: process.env.GOOGLE_CLIENT_ID,
           client_secret: process.env.GOOGLE_CLIENT_SECRET,
           code: code,
           grant_type: 'authorization_code',
           redirect_uri: process.env.GOOGLE_REDIRECT_URI?.trim().replace(/\n/g, ''),
-        }),
-      });
+        }).toString(),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
 
-      const tokenData = await tokenResponse.json();
+      const tokenData = tokenResponse.data;
       
       if (!tokenData.access_token) {
         console.error('❌ Token error:', tokenData);
         throw new Error('Failed to get access token');
       }
 
+      console.log('✅ Got access token from Google');
+
       // Get user info
-      const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      const userResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
         headers: {
           Authorization: `Bearer ${tokenData.access_token}`,
         },
       });
 
-      const userData = await userResponse.json();
+      const userData = userResponse.data;
+      
+      console.log('✅ Got user info from Google:', userData.email);
       
       return {
         id: userData.id,
@@ -217,7 +224,10 @@ class AuthService {
       };
       
     } catch (error) {
-      console.error('❌ Google OAuth error:', error);
+      console.error('❌ Google OAuth error:', error.message);
+      if (error.response) {
+        console.error('❌ Google API response:', error.response.data);
+      }
       throw new Error('Failed to authenticate with Google');
     }
   }
