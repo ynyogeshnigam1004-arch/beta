@@ -149,7 +149,7 @@ function Assistants() {
   const fetchAvailableTranscribers = async () => {
     try {
       console.log('🔄 Fetching transcribers from API...')
-      const response = await fetch('/api/transcribers')
+      const response = await fetch(config.getApiUrl('/api/transcribers'))
       const data = await response.json()
       console.log('🎙️ Transcribers API response:', data)
       
@@ -212,7 +212,7 @@ function Assistants() {
   const fetchAvailableVoices = async () => {
     try {
       console.log('🔄 Fetching voices from API...')
-      const response = await fetch('/api/voices')
+      const response = await fetch(config.getApiUrl('/api/voices'))
       const data = await response.json()
       console.log('🎤 Voices API response:', data)
       
@@ -265,7 +265,7 @@ function Assistants() {
   const fetchTTSProviders = async () => {
     try {
       console.log('🔄 Fetching TTS providers...')
-      const response = await fetch('/api/tts/providers')
+      const response = await fetch(config.getApiUrl('/api/tts/providers'))
       
       // Check if response is JSON
       const contentType = response.headers.get('content-type')
@@ -316,8 +316,8 @@ function Assistants() {
     try {
       // Fetch voices and models in parallel
       const [voicesResponse, modelsResponse] = await Promise.all([
-        fetch('/api/tts/elevenlabs/voices'),
-        fetch('/api/tts/elevenlabs/models')
+        fetch(config.getApiUrl('/api/tts/elevenlabs/voices')),
+        fetch(config.getApiUrl('/api/tts/elevenlabs/models'))
       ])
       
       const voicesData = await voicesResponse.json()
@@ -377,7 +377,7 @@ function Assistants() {
       
       console.log('💰 Cost request payload:', costRequest)
       
-      const response = await fetch('/api/calculate-cost', {
+      const response = await fetch(config.getApiUrl('/api/calculate-cost'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(costRequest)
@@ -413,7 +413,7 @@ function Assistants() {
     try {
       console.log('🔄 Fetching assistants from MongoDB...')
       const token = localStorage.getItem('token')
-      const response = await fetch('/api/assistants', {
+      const response = await fetch(config.getApiUrl('/api/assistants'), {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -474,7 +474,7 @@ function Assistants() {
       }
 
       const token = localStorage.getItem('token')
-      const response = await fetch('/api/assistants', {
+      const response = await fetch(config.getApiUrl('/api/assistants'), {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -584,7 +584,7 @@ function Assistants() {
 
       console.log('🔄 Creating assistant in MongoDB...')
       const token = localStorage.getItem('token')
-      const response = await fetch('/api/assistants', {
+      const response = await fetch(config.getApiUrl('/api/assistants'), {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -721,7 +721,7 @@ function Assistants() {
       }
       
       const token = localStorage.getItem('token')
-      const response = await fetch('/api/tts/synthesize', {
+      const response = await fetch(config.getApiUrl('/api/tts/synthesize'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -947,7 +947,7 @@ function Assistants() {
                     className="btn-secondary"
                     onClick={async () => {
                       try {
-                        const response = await fetch('/api/models/refresh', { method: 'POST' });
+                        const response = await fetch(config.getApiUrl('/api/models/refresh'), { method: 'POST' });
                         const data = await response.json();
                         if (data.success) {
                           await fetchAvailableModels();
