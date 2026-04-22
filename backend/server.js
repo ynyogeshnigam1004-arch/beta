@@ -18,7 +18,6 @@ const { connectDB, checkConnection } = require('./config/database');
 const authRoutes = require('./routes/authEnhanced');
 const assistantRoutes = require('./routes/assistants');
 const creditsRoutes = require('./routes/credits');
-const modelsRoutes = require('./routes/models');
 const paymentsRoutes = require('./routes/payments');
 const toolsRoutes = require('./routes/tools');
 const ttsRoutes = require('./routes/tts');
@@ -88,7 +87,6 @@ app.use('/api/assistants', assistantRoutes);
 app.use('/api/credits', creditsRoutes);
 
 // Mount other API routes
-app.use('/api/models', modelsRoutes);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api/tools', toolsRoutes);
 app.use('/api/tts', ttsRoutes);
