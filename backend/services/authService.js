@@ -177,6 +177,12 @@ class AuthService {
    */
   async exchangeGoogleCode(code) {
     try {
+      // Clean the redirect URI to remove any newlines or whitespace
+      const cleanRedirectUri = process.env.GOOGLE_REDIRECT_URI?.trim().replace(/\n/g, '');
+      
+      console.log('🔄 Exchanging Google code...');
+      console.log('🧹 Using Redirect URI:', cleanRedirectUri);
+      
       // Exchange code for access token
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
@@ -188,13 +194,16 @@ class AuthService {
           client_secret: process.env.GOOGLE_CLIENT_SECRET,
           code: code,
           grant_type: 'authorization_code',
-          redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+          redirect_uri: cleanRedirectUri,
         }),
       });
 
       const tokenData = await tokenResponse.json();
       
+      console.log('📊 Token response status:', tokenResponse.status);
+      
       if (!tokenData.access_token) {
+        console.error('❌ Token error:', tokenData);
         throw new Error('Failed to get access token');
       }
 
@@ -206,6 +215,8 @@ class AuthService {
       });
 
       const userData = await userResponse.json();
+      
+      console.log('✅ Google user authenticated:', userData.email);
       
       return {
         id: userData.id,
