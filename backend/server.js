@@ -25,6 +25,28 @@ const twilioRoutes = require('./routes/twilio');
 const twilioCredentialsRoutes = require('./routes/twilioCredentials');
 const twoFactorRoutes = require('./routes/twoFactor');
 
+// Simple inline routes for models and pricing (to avoid deployment issues)
+const express = require('express');
+const modelsRouter = express.Router();
+const pricingRouter = express.Router();
+
+modelsRouter.get('/', (req, res) => {
+  res.json({
+    success: true,
+    models: [
+      { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', provider: 'Groq', pricing: { input: 0.59, output: 0.79 } },
+      { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B', provider: 'Groq', pricing: { input: 0.05, output: 0.08 } }
+    ]
+  });
+});
+
+pricingRouter.get('/', (req, res) => {
+  res.json({
+    success: true,
+    pricing: { llm: { input: 0.59, output: 0.79 }, stt: { perMinute: 0.006 }, tts: { perCharacter: 0.00003 } }
+  });
+});
+
 // Server configuration
 const PORT = process.env.PORT || 10000;
 
@@ -87,6 +109,8 @@ app.use('/api/assistants', assistantRoutes);
 app.use('/api/credits', creditsRoutes);
 
 // Mount other API routes
+app.use('/api/models', modelsRouter);
+app.use('/api/pricing', pricingRouter);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api/tools', toolsRoutes);
 app.use('/api/tts', ttsRoutes);
