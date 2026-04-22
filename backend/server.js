@@ -18,12 +18,6 @@ const { connectDB, checkConnection } = require('./config/database');
 const authRoutes = require('./routes/authEnhanced');
 const assistantRoutes = require('./routes/assistants');
 const creditsRoutes = require('./routes/credits');
-const paymentsRoutes = require('./routes/payments');
-const toolsRoutes = require('./routes/tools');
-const ttsRoutes = require('./routes/tts');
-const twilioRoutes = require('./routes/twilio');
-const twilioCredentialsRoutes = require('./routes/twilioCredentials');
-const twoFactorRoutes = require('./routes/twoFactor');
 
 // Server configuration
 const PORT = process.env.PORT || 10000;
@@ -83,14 +77,8 @@ app.use('/api/auth', authRoutes);
 // Mount assistant routes
 app.use('/api/assistants', assistantRoutes);
 
-// Mount other API routes
+// Mount credits routes
 app.use('/api/credits', creditsRoutes);
-app.use('/api/payments', paymentsRoutes);
-app.use('/api/tools', toolsRoutes);
-app.use('/api/tts', ttsRoutes);
-app.use('/api/twilio', twilioRoutes);
-app.use('/api/phone-numbers', twilioCredentialsRoutes);
-app.use('/api/2fa', twoFactorRoutes);
 
 // Test endpoint to verify API is working
 app.get('/api/test', (req, res) => {
