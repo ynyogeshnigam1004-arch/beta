@@ -414,15 +414,12 @@ router.get('/google/callback', async (req, res) => {
       { expiresIn: JWT_EXPIRES_IN }
     );
 
-    // Redirect to frontend with token
-    const redirectUrl = `${process.env.FRONTEND_URL}/auth/google/callback?token=${token}&user=${encodeURIComponent(JSON.stringify({
-      id: user._id,
-      fullName: user.fullName,
-      email: user.email,
-      role: user.role,
-      profilePicture: user.profilePicture
-    }))}`;
+    console.log('✅ Generated JWT token for user:', user.email);
 
+    // Redirect to frontend with token (simplified URL)
+    const redirectUrl = `${process.env.FRONTEND_URL}/auth/google/callback?token=${token}`;
+    
+    console.log('🔄 Redirecting to:', redirectUrl);
     res.redirect(redirectUrl);
 
   } catch (error) {
