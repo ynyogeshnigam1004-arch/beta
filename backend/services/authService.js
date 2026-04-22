@@ -154,10 +154,13 @@ class AuthService {
   generateGoogleOAuthURL(state) {
     const baseURL = 'https://accounts.google.com/o/oauth2/v2/auth';
     
+    // Clean the redirect URI to remove any newlines or whitespace
+    const cleanRedirectUri = process.env.GOOGLE_REDIRECT_URI?.trim().replace(/\n/g, '');
+    
     // Simplified parameters to avoid URL length issues
     const params = new URLSearchParams({
       client_id: process.env.GOOGLE_CLIENT_ID,
-      redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+      redirect_uri: cleanRedirectUri,
       response_type: 'code',
       scope: 'email profile',
       state: state || 'default'
@@ -165,6 +168,7 @@ class AuthService {
     
     const url = `${baseURL}?${params.toString()}`;
     console.log('🔗 Generated OAuth URL:', url);
+    console.log('🧹 Cleaned Redirect URI:', cleanRedirectUri);
     return url;
   }
 
