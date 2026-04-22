@@ -62,5 +62,6 @@ const authenticateToken = async (req, res, next) => {
 };
 
 module.exports = {
-  authenticateToken
+  authenticateToken,
+  authenticate: authenticateToken // Alias for compatibility
 };
