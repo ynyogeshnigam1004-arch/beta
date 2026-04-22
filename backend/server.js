@@ -16,6 +16,7 @@ const { connectDB, checkConnection } = require('./config/database');
 
 // Routes
 const authRoutes = require('./routes/authEnhanced');
+const assistantRoutes = require('./routes/assistants');
 
 // Server configuration
 const PORT = process.env.PORT || 10000;
@@ -71,6 +72,9 @@ app.get('/health', async (req, res) => {
 
 // Mount authentication routes
 app.use('/api/auth', authRoutes);
+
+// Mount assistant routes
+app.use('/api/assistants', assistantRoutes);
 
 // Test endpoint to verify API is working
 app.get('/api/test', (req, res) => {
