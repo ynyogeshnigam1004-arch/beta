@@ -18,4 +18,10 @@ const config = {
   getApiUrl: (path) => `${config.apiUrl}${path.startsWith('/') ? path : '/' + path}`,
 };
 
+// Debug logging
+console.log('🔧 Frontend Config Debug:');
+console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
+console.log('Final apiUrl:', config.apiUrl);
+console.log('Sample API call would go to:', config.getApiUrl('/api/test'));
+
 export default config;
