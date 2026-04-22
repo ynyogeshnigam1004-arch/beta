@@ -116,18 +116,17 @@ function Signup({ onLogin }) {
       const response = await axios.get(config.getApiUrl('/api/auth/google'))
       
       if (response.data.success) {
-        // Open Google OAuth in popup
-        const popup = window.open(
-          response.data.authUrl,
-          'google-oauth',
-          'width=500,height=600,scrollbars=yes,resizable=yes'
-        )
-
-        // Listen for popup messages
-        const handleMessage = async (event) => {
-          if (event.origin !== window.location.origin) return
-
-          if (event.data.type === 'GOOGLE_OAUTH_SUCCESS') {
+        // Direct redirect instead of popup (avoids CORS issues)
+        window.location.href = response.data.authUrl
+      } else {
+        setError('Failed to initiate Google authentication')
+        setLoading(false)
+      }
+    } catch (err) {
+      setError('Failed to initiate Google authentication')
+      setLoading(false)
+    }
+  }
             popup.close()
             
             try {
