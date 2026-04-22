@@ -8,69 +8,38 @@ function GoogleCallback() {
 
   useEffect(() => {
     const handleGoogleCallback = async () => {
-      const code = searchParams.get('code')
-      const state = searchParams.get('state')
+      // Check if we have token and user in URL (from backend redirect)
+      const token = searchParams.get('token')
+      const userParam = searchParams.get('user')
       const error = searchParams.get('error')
 
       if (error) {
         console.error('Google OAuth error:', error)
-        // Send error to parent window if in popup
-        if (window.opener) {
-          window.opener.postMessage({
-            type: 'GOOGLE_OAUTH_ERROR',
-            error: error
-          }, window.location.origin)
-          window.close()
-        } else {
-          navigate('/login?error=oauth_failed')
-        }
+        navigate('/login?error=oauth_failed')
         return
       }
 
-      if (code) {
+      if (token && userParam) {
         try {
-          // Send success to parent window if in popup
-          if (window.opener) {
-            window.opener.postMessage({
-              type: 'GOOGLE_OAUTH_SUCCESS',
-              code: code,
-              state: state
-            }, window.location.origin)
-            window.close()
-          } else {
-            // Handle direct navigation (not popup)
-            const response = await fetch(config.getApiUrl('/api/auth/google/callback'), {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ code, state }),
-            })
-
-            const data = await response.json()
-
-            if (data.success) {
-              localStorage.setItem('token', data.token)
-              localStorage.setItem('user', JSON.stringify(data.user))
-              navigate('/dashboard')
-            } else {
-              navigate('/login?error=oauth_failed')
-            }
+          // Backend already processed OAuth, just save token and redirect
+          const user = JSON.parse(decodeURIComponent(userParam))
+          localStorage.setItem('token', token)
+          localStorage.setItem('user', JSON.stringify(user))
+          
+          // Trigger login callback if available
+          if (window.onLogin) {
+            window.onLogin(token)
           }
+          
+          // Redirect to dashboard
+          navigate('/dashboard')
         } catch (error) {
-          console.error('Error processing Google OAuth:', error)
-          if (window.opener) {
-            window.opener.postMessage({
-              type: 'GOOGLE_OAUTH_ERROR',
-              error: 'processing_failed'
-            }, window.location.origin)
-            window.close()
-          } else {
-            navigate('/login?error=oauth_failed')
-          }
+          console.error('Error parsing OAuth response:', error)
+          navigate('/login?error=oauth_failed')
         }
       } else {
-        navigate('/login?error=no_code')
+        // No token in URL, something went wrong
+        navigate('/login?error=no_token')
       }
     }
 

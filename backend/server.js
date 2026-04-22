@@ -24,6 +24,10 @@ const ttsRoutes = require('./routes/tts');
 const twilioRoutes = require('./routes/twilio');
 const twilioCredentialsRoutes = require('./routes/twilioCredentials');
 const twoFactorRoutes = require('./routes/twoFactor');
+const modelsRoutes = require('./routes/models');
+const pricingRoutes = require('./routes/pricing');
+const voicesRoutes = require('./routes/voices');
+const transcribersRoutes = require('./routes/transcribers');
 
 // Server configuration
 const PORT = process.env.PORT || 10000;
@@ -93,6 +97,10 @@ app.use('/api/tts', ttsRoutes);
 app.use('/api/twilio', twilioRoutes);
 app.use('/api/phone-numbers', twilioCredentialsRoutes);
 app.use('/api/2fa', twoFactorRoutes);
+app.use('/api/models', modelsRoutes);
+app.use('/api/pricing', pricingRoutes);
+app.use('/api/voices', voicesRoutes);
+app.use('/api/transcribers', transcribersRoutes);
 
 // Test endpoint to verify API is working
 app.get('/api/test', (req, res) => {

@@ -75,49 +75,6 @@ function Login({ onLogin }) {
       setLoading(false)
     }
   }
-            try {
-              const callbackResponse = await axios.post(config.getApiUrl('/api/auth/google/callback'), {
-                code: event.data.code,
-                state: event.data.state
-              })
-
-              if (callbackResponse.data.success) {
-                const { token, user } = callbackResponse.data
-                localStorage.setItem('token', token)
-                localStorage.setItem('user', JSON.stringify(user))
-                onLogin(token)
-                navigate('/dashboard')
-              } else {
-                setError(callbackResponse.data.error || 'Google authentication failed')
-              }
-            } catch (err) {
-              setError('Google authentication failed')
-            }
-          } else if (event.data.type === 'GOOGLE_OAUTH_ERROR') {
-            popup.close()
-            setError('Google authentication failed')
-          }
-
-          window.removeEventListener('message', handleMessage)
-          setLoading(false)
-        }
-
-        window.addEventListener('message', handleMessage)
-
-        // Check if popup was closed manually
-        const checkClosed = setInterval(() => {
-          if (popup.closed) {
-            clearInterval(checkClosed)
-            window.removeEventListener('message', handleMessage)
-            setLoading(false)
-          }
-        }, 1000)
-      }
-    } catch (err) {
-      setError('Failed to initiate Google authentication')
-      setLoading(false)
-    }
-  }
 
   return (
     <div className="auth-container">
